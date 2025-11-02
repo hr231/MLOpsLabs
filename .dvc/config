@@ -1,0 +1,5 @@
+[core]
+    remote = lab2
+['remote "lab2"']
+    url = gs://dvc-lab-bucket-gigachad-2025
+    credentialpath = E:\MLOpsLabs\dvc-lab-477003-67ce0aa7422c.json
