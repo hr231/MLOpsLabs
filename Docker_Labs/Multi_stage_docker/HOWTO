@@ -1,0 +1,9 @@
+# Build the Docker image
+docker build -t fashion-mnist-app .
+
+# Run the container with port mapping (host:container)
+# The Flask app runs on port 4000 inside the container
+docker run -p 4000:4000 fashion-mnist-app
+
+# After running, access the application at:
+# http://localhost:4000/predict

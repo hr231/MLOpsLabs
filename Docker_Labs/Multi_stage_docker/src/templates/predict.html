@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Fashion-MNIST Classifier</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+        }
+        h1 {
+            color: #5c67f2;
+            text-align: center;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        form {
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        label {
+            margin-top: 10px;
+            display: block;
+            color: #555;
+            font-weight: bold;
+        }
+        input[type="file"] {
+            padding: 10px;
+            margin-top: 5px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            width: calc(100% - 22px);
+            display: block;
+        }
+        input[type="submit"] {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 20px;
+            font-size: 16px;
+        }
+        input[type="submit"]:hover {
+            background-color: #45a049;
+        }
+        .predicted-class {
+            color: #31708e;
+            background-color: #d9edf7;
+            border-color: #bce8f1;
+            padding: 20px;
+            border-radius: 4px;
+            margin-top: 20px;
+            display: none;
+        }
+        .image-preview {
+            margin-top: 20px;
+            text-align: center;
+        }
+        .image-preview img {
+            max-width: 200px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            padding: 5px;
+        }
+        .confidence-bar {
+            background-color: #e0e0e0;
+            border-radius: 10px;
+            height: 20px;
+            margin: 5px 0;
+            overflow: hidden;
+        }
+        .confidence-fill {
+            background-color: #4CAF50;
+            height: 100%;
+            text-align: center;
+            line-height: 20px;
+            color: white;
+            font-size: 12px;
+            transition: width 0.3s;
+        }
+        .predictions-list {
+            margin-top: 15px;
+        }
+        .prediction-item {
+            margin: 8px 0;
+        }
+        .error-message {
+            color: #d32f2f;
+            background-color: #ffebee;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            display: none;
+        }
+    </style>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Welcome to the Fashion-MNIST Classifier API - MLOps Class of 2025!</h1>
+        <form id="predictionForm" enctype="multipart/form-data">
+            <label for="image">Upload Fashion Item Image (28x28 grayscale recommended):</label>
+            <input type="file" id="image" name="image" accept="image/*" required>
+            
+            <div class="image-preview" id="imagePreview" style="display:none;">
+                <p>Preview:</p>
+                <img id="previewImg" src="" alt="Preview">
+            </div>
+
+            <input type="submit" value="Predict Fashion Item">
+        </form>
+
+        <div class="error-message" id="errorMessage"></div>
+
+        <div class="predicted-class" id="predictionResult">
+            <h2 id="predictedClass">Predicted Class:</h2>
+            <div class="confidence-bar">
+                <div class="confidence-fill" id="confidenceFill" style="width: 0%;">
+                    <span id="confidenceText">0%</span>
+                </div>
+            </div>
+            <div class="predictions-list">
+                <h3>All Predictions:</h3>
+                <div id="allPredictions"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            // Show image preview when file is selected
+            $('#image').on('change', function(e) {
+                var file = e.target.files[0];
+                if (file) {
+                    var reader = new FileReader();
+                    reader.onload = function(e) {
+                        $('#previewImg').attr('src', e.target.result);
+                        $('#imagePreview').show();
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            $('#predictionForm').on('submit', function(event) {
+                event.preventDefault(); // Prevent the default form submission
+
+                var formData = new FormData();
+                var imageFile = $('#image')[0].files[0];
+                
+                if (!imageFile) {
+                    showError('Please select an image file.');
+                    return;
+                }
+
+                formData.append('image', imageFile);
+
+                // Hide previous results and errors
+                $('#predictionResult').hide();
+                $('#errorMessage').hide();
+
+                $.ajax({
+                    type: 'POST',
+                    url: '/predict',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    dataType: 'json'
+                }).done(function(data) {
+                    console.log(data);
+                    
+                    if (data.error) {
+                        showError(data.error);
+                        return;
+                    }
+
+                    // Display prediction
+                    $('#predictedClass').text("Predicted Class: " + data.predicted_class);
+                    var confidence = data.confidence || 0;
+                    $('#confidenceFill').css('width', confidence + '%');
+                    $('#confidenceText').text(confidence + '%');
+
+                    // Display all predictions
+                    var predictionsHtml = '';
+                    if (data.all_predictions) {
+                        var sortedPredictions = Object.entries(data.all_predictions)
+                            .sort((a, b) => b[1] - a[1]);
+                        
+                        sortedPredictions.forEach(function(item) {
+                            predictionsHtml += '<div class="prediction-item">' +
+                                '<strong>' + item[0] + ':</strong> ' + item[1] + '%' +
+                                '</div>';
+                        });
+                    }
+                    $('#allPredictions').html(predictionsHtml);
+                    
+                    $('#predictionResult').show();
+                }).fail(function(xhr) {
+                    var errorMsg = 'Error: Could not reach the prediction server.';
+                    if (xhr.responseJSON && xhr.responseJSON.error) {
+                        errorMsg = xhr.responseJSON.error;
+                    }
+                    showError(errorMsg);
+                    console.log(xhr);
+                });
+            });
+
+            function showError(message) {
+                $('#errorMessage').text(message).show();
+            }
+        });
+    </script>
+</body>
+</html>
